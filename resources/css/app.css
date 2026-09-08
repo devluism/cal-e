@@ -1,0 +1,225 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* Modo oscuro por clase `.dark` (lo alterna hooks/use-theme.js), no por preferencia del
+   sistema: así el usuario manda y no quedamos a merced del tema del SO.
+   NO quitar esta línea: sin ella Tailwind v4 activa `dark:` según el SO y aparecen fondos
+   claros con texto blanco. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../js/**/*.jsx';
+
+/* ---------------------------------------------------------------------------
+   Tema NORTE — tokens semánticos de shadcn/ui.
+
+   La identidad sale de la metáfora de la marca: la aguja de la brújula. El
+   **ámbar** (--primary) es la punta que señala el norte — cálido, optimista, y
+   el color de mayor contraste sobre superficies oscuras. El **azul profundo de
+   medianoche** es el fondo sobre el que esa aguja se lee.
+
+   A diferencia de IGA (marino corporativo), Norte es cálido a propósito: el
+   público no es una empresa, es una manicurista o un bodeguero mirando el
+   teléfono entre cliente y cliente. Tiene que sentirse cercano, no bancario.
+
+   Ojo con el ámbar: lleva texto OSCURO encima (--primary-foreground), no
+   blanco. Ámbar con texto blanco no pasa contraste AA y se ve barato.
+--------------------------------------------------------------------------- */
+:root {
+    --radius: 0.75rem;
+
+    --background: oklch(0.99 0.004 90);
+    --foreground: oklch(0.19 0.025 258);
+
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.19 0.025 258);
+
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.19 0.025 258);
+
+    /* Ámbar marigold: la punta de la aguja. */
+    --primary: oklch(0.78 0.155 72);
+    --primary-foreground: oklch(0.21 0.03 258);
+
+    --secondary: oklch(0.96 0.008 258);
+    --secondary-foreground: oklch(0.24 0.03 258);
+
+    --muted: oklch(0.96 0.008 258);
+    --muted-foreground: oklch(0.52 0.02 258);
+
+    --accent: oklch(0.95 0.02 72);
+    --accent-foreground: oklch(0.3 0.06 72);
+
+    --destructive: oklch(0.58 0.22 27);
+    --destructive-foreground: oklch(0.99 0 0);
+
+    /* Verde: el precio está al día, el margen se sostiene. */
+    --success: oklch(0.62 0.16 155);
+    --success-foreground: oklch(0.99 0 0);
+
+    /* Naranja de aviso: la tasa se movió y hay precios rezagados. */
+    --warning: oklch(0.72 0.17 50);
+    --warning-foreground: oklch(0.99 0 0);
+
+    --border: oklch(0.9 0.008 258);
+    --input: oklch(0.9 0.008 258);
+    --ring: oklch(0.78 0.155 72);
+
+    --chart-1: oklch(0.78 0.155 72);
+    --chart-2: oklch(0.62 0.16 155);
+    --chart-3: oklch(0.55 0.13 245);
+    --chart-4: oklch(0.65 0.2 20);
+    --chart-5: oklch(0.6 0.15 300);
+
+    --sidebar: oklch(0.21 0.03 258);
+    --sidebar-foreground: oklch(0.93 0.01 258);
+    --sidebar-primary: oklch(0.78 0.155 72);
+    --sidebar-primary-foreground: oklch(0.21 0.03 258);
+    --sidebar-accent: oklch(0.28 0.035 258);
+    --sidebar-accent-foreground: oklch(0.97 0.005 258);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.78 0.155 72);
+}
+
+.dark {
+    --background: oklch(0.16 0.022 258);
+    --foreground: oklch(0.96 0.006 258);
+
+    --card: oklch(0.21 0.028 258);
+    --card-foreground: oklch(0.96 0.006 258);
+
+    --popover: oklch(0.21 0.028 258);
+    --popover-foreground: oklch(0.96 0.006 258);
+
+    --primary: oklch(0.81 0.155 72);
+    --primary-foreground: oklch(0.19 0.03 258);
+
+    --secondary: oklch(0.27 0.03 258);
+    --secondary-foreground: oklch(0.96 0.006 258);
+
+    --muted: oklch(0.27 0.03 258);
+    --muted-foreground: oklch(0.71 0.02 258);
+
+    --accent: oklch(0.3 0.045 72);
+    --accent-foreground: oklch(0.93 0.05 72);
+
+    --destructive: oklch(0.68 0.19 25);
+    --destructive-foreground: oklch(0.99 0 0);
+
+    --success: oklch(0.72 0.16 155);
+    --success-foreground: oklch(0.17 0.02 155);
+
+    --warning: oklch(0.78 0.16 55);
+    --warning-foreground: oklch(0.2 0.04 55);
+
+    --border: oklch(1 0 0 / 12%);
+    --input: oklch(1 0 0 / 16%);
+    --ring: oklch(0.81 0.155 72);
+
+    --chart-1: oklch(0.81 0.155 72);
+    --chart-2: oklch(0.72 0.16 155);
+    --chart-3: oklch(0.68 0.14 245);
+    --chart-4: oklch(0.7 0.2 20);
+    --chart-5: oklch(0.68 0.15 300);
+
+    --sidebar: oklch(0.19 0.026 258);
+    --sidebar-foreground: oklch(0.93 0.01 258);
+    --sidebar-primary: oklch(0.81 0.155 72);
+    --sidebar-primary-foreground: oklch(0.19 0.03 258);
+    --sidebar-accent: oklch(0.27 0.03 258);
+    --sidebar-accent-foreground: oklch(0.97 0.005 258);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.81 0.155 72);
+}
+
+@theme inline {
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Marca Norte — el ámbar de la aguja. */
+    --color-norte-50: #fffaeb;
+    --color-norte-100: #fdf0c8;
+    --color-norte-200: #fbdf8c;
+    --color-norte-300: #f9c94f;
+    --color-norte-400: #f7b427;
+    --color-norte-500: #f1930e;
+    --color-norte-600: #d56d09;
+    --color-norte-700: #b14c0c;
+    --color-norte-800: #903b10;
+    --color-norte-900: #763111;
+    --color-norte-950: #441704;
+
+    /* Azul medianoche — las superficies sobre las que se lee la aguja. */
+    --color-noche-50: #f2f5fa;
+    --color-noche-100: #e3e9f4;
+    --color-noche-200: #c7d3e8;
+    --color-noche-300: #9db2d6;
+    --color-noche-400: #6c8ac0;
+    --color-noche-500: #4a6aa8;
+    --color-noche-600: #3a538c;
+    --color-noche-700: #314472;
+    --color-noche-800: #2c3a5f;
+    --color-noche-900: #141c2e;
+    --color-noche-950: #0b1220;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+
+    /* El público usa el teléfono con una mano y con prisa: el foco siempre visible. */
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-ring;
+    }
+
+    /* Los montos se leen de un vistazo y cambian solos con la tasa: tabulares para que
+       no "bailen" los dígitos al actualizarse. */
+    .tabular-nums {
+        font-variant-numeric: tabular-nums;
+    }
+}
