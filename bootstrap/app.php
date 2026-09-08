@@ -18,6 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        /*
+         * A dónde manda cada middleware. Sin esto Laravel usa sus rutas por defecto
+         * (`/login`, `/dashboard`), que en Norte no existen: quien ya tenía sesión y volvía
+         * a /entrar caía en un bucle de redirecciones.
+         */
+        $middleware->redirectGuestsTo(fn () => route('login'));
+        $middleware->redirectUsersTo(fn () => route('panel'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
