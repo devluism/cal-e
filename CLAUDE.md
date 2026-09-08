@@ -314,6 +314,16 @@ php artisan pagos confirmar 12      # activar la suscripción
 **Tests**: contra Postgres (`norte_test`), no sqlite en memoria — las diferencias de dialecto tienen
 que salir en las pruebas. Crear la base una vez con `createdb -U postgres -p 5433 norte_test`.
 
+`migrate:fresh --seed` deja un negocio «Bodega Demo» con catálogo de ejemplo y el usuario
+`admin@mail.com` / `1234`. El catálogo incluye a propósito productos con costo en dólares **y** en
+bolívares: sin los segundos no se ve funcionando la pieza central del producto.
+
+**Una lección que costó un fallo**: al endurecer `users.tenant_id` a NOT NULL no se revisó quién más
+escribía usuarios, y la factory y el seeder por defecto de Laravel los creaban sueltos —
+`migrate:fresh --seed` reventaba. Pasó desapercibido porque **todos los tests creaban sus usuarios a
+mano**, así que la factory nunca se ejercitaba. `ArranqueTest` existe para eso: prueba el camino que
+recorre quien clona el repositorio. Un camino que nadie prueba está roto y todavía no lo sabes.
+
 **Ojo con el entorno**: PHP en esta máquina no traía bundle de certificados CA, así que toda
 llamada HTTPS saliente fallaba con «SSL certificate problem» — incluida la de la tasa, que es el
 latido del producto. Se descargó `cacert.pem` y se apuntaron `curl.cainfo` y `openssl.cafile` en el
