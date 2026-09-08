@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequiereSuscripcion;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('panel'));
+
+        // `->middleware('suscrito')` en lo que se paga. Ver RequiereSuscripcion.
+        $middleware->alias(['suscrito' => RequiereSuscripcion::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

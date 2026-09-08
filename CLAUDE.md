@@ -163,7 +163,72 @@ la tasa se mueve, tú sabes dónde estás parado.
 
 ---
 
-## 7. Qué se trajo de `iga-app` y qué no
+## 7. Suscripción y cobro
+
+### Lo que importa no es cómo entra la plata
+
+En Venezuela el riel de cobro es la parte inestable: hoy es Pago Móvil reportado a mano, mañana
+puede ser C2P con acuerdo bancario, Binance Pay o una pasarela local. Lo que **no** cambia es la
+máquina de estados del acceso. Por eso están separados:
+
+- `subscriptions` manda sobre el acceso y **no sabe nada de bancos**.
+- `payments` registra que entró dinero, por el riel que sea.
+
+Conectar confirmación automática mañana es llamar a `SuscripcionService::confirmar()` desde un
+webhook en vez de desde el comando `pagos`. El control de acceso no se entera.
+
+### La máquina de estados
+
+```text
+prueba (14 días) → activa → gracia (3 días) → suspendida
+                      ↑                            │
+                      └────────── pago ────────────┘
+```
+
+- **El estado se recalcula al leer**, no en un cron. Una suscripción no puede quedarse diciendo
+  «activa» tres semanas después de vencer porque el programador de tareas no corrió. El cron sirve
+  para avisar, no para que la regla se cumpla.
+- **La gracia no es generosidad, es realismo.** El público cobra por Pago Móvil y paga cuando puede:
+  cortarle a la medianoche del día que vence es perder a alguien que iba a pagar el jueves.
+- **Suspendida no es «afuera».** Sigue entrando y viendo su catálogo — sus costos y márgenes los
+  cargó él. Pierde la parte viva (precio con la tasa de hoy y exportación), que es lo que paga.
+  Borrarle los datos o dejarlo fuera del todo garantiza que no vuelva.
+- **La pantalla de suscripción NO lleva el middleware `suscrito`**: es justo a la que hay que poder
+  llegar cuando venció. Protegerla dejaría al cliente sin forma de pagar.
+
+### El cobro
+
+`SuscripcionService::cobroDe()` le muestra el monto **ya convertido a bolívares con la tasa del
+día**: obligarlo a multiplicar sería pedirle justo la cuenta de la que este producto lo libera.
+
+Al reportar, el monto se **congela en las dos monedas con la tasa usada** — la misma lección de
+`order_payments` en IGA. Si se recalculara al leer, el pago de ayer aparecería hoy con otra cifra y
+el cliente diría, con razón, que pagó lo que le pidieron.
+
+- **Reportar no da acceso.** Queda en `reportado` hasta que se coteje. A 3–5 $/mes no compensa
+  perseguir el fraude: es más barato confirmar.
+- **La referencia es única** en toda la plataforma: es lo que impide estirar la suscripción
+  reportando el mismo comprobante dos veces.
+- **Pagar antes de vencer no pierde los días que quedaban** (se extiende desde el vencimiento);
+  pagar ya vencido cuenta desde hoy, porque regalarle el tiempo suspendido sería cobrarle por días
+  que no usó.
+
+```bash
+php artisan pagos pendientes        # qué hay por cotejar
+php artisan pagos confirmar 12      # activa la suscripción
+php artisan pagos rechazar 12 --motivo="no aparece en el banco"
+```
+
+Va por consola y no por una pantalla de administración porque con las primeras decenas de clientes
+es más rápido —se abre el estado de cuenta del banco al lado— y una consola de administración es un
+producto en sí mismo. Cuando haya volumen, la pantalla llama al mismo servicio.
+
+**Antes de cobrarle a nadie**: reemplazar los datos de ejemplo de `PaymentAccount` en `PlanSeeder`
+por el Pago Móvil real.
+
+---
+
+## 8. Qué se trajo de `iga-app` y qué no
 
 **Sí se trajo** (y por qué vale):
 
@@ -181,7 +246,7 @@ portarlos **con `tenant_id`**, no copiarlos tal cual.
 
 ---
 
-## 8. Estado actual
+## 9. Estado actual
 
 Hecho:
 
@@ -189,24 +254,38 @@ Hecho:
 - Multi-inquilino: `tenants`, `users`, scope global, alta de negocio+usuario en una transacción.
 - `exchange_rates` compartida + `TasaService`.
 - `products` + `price_snapshots` con el modelo de costo anclado.
-- `PrecioService` con 9 tests verdes.
+- `PrecioService` y `SuscripcionService`, con 24 tests verdes.
 - Marca Norte: isotipo, paleta, tema oscuro por defecto.
 - Login y registro con el panel de marca; panel con la tasa del día y la lista calculada.
+- **Tasa entrando de verdad**: `php artisan tasa:sync` + programador. Verificado contra el
+  proveedor real.
+- **Cobro**: planes, suscripción con máquina de estados, reporte de Pago Móvil con el monto
+  convertido a la tasa del día, y confirmación por consola (`php artisan pagos`).
 
 ### Lo que sigue, en orden
 
-1. **Alta y edición de productos** — hoy el panel muestra el estado vacío. Es lo que falta para que
-   el «aha» ocurra: cargar un producto y ver su precio al día.
+1. **Alta y edición de productos** — hoy el panel muestra el estado vacío. Es lo único que falta
+   para que el «aha» ocurra: cargar un producto y ver su precio al día. Es lo siguiente.
 2. **Exportar a WhatsApp** — texto plano agrupado por categoría. Es la mitad de la promesa B.
-3. **Cron de la tasa** (`schedule` + comando) y foto diaria en `price_snapshots`.
-4. **Historial de precios** — la gráfica que hace que el usuario *crea* que la herramienta trabaja.
-5. **Suscripción** — ver pendientes.
+3. **Foto diaria en `price_snapshots`** + la gráfica del historial: es lo que hace que el usuario
+   *crea* que la herramienta trabaja, en vez de tener que creernos.
+4. **Aviso de vencimiento** por correo o WhatsApp unos días antes: hoy el usuario solo se entera si
+   entra a la app.
 
 ### Pendientes que necesitan decisión del negocio
 
-- **Cobro.** El plan es Guaybo/Komvii en Pago Móvil, no Stripe. Falta confirmar si permiten cobro
-  recurrente automático o si cada mes se activa a mano. Eso define el control de acceso: qué pasa
-  exactamente el día que alguien no paga el mes 2.
+- **Automatizar la confirmación del pago.** Hoy se coteja a mano con `php artisan pagos confirmar`,
+  que es lo correcto para las primeras decenas de clientes. Las opciones reales para automatizar,
+  de menor a mayor fricción:
+  1. **C2P / Botón de Pago** con un banco venezolano (Mercantil, Banesco, BNC). Es la solución de
+     verdad —debita solo— pero exige RIF jurídico y trámite bancario: es un paso de negocio, no de
+     código.
+  2. **Binance Pay**: tiene API y es común entre vendedores digitales venezolanos. Menos trámite.
+  3. **Leer las notificaciones del banco** por correo y cotejar la referencia. Barato pero frágil.
+  Cualquiera de las tres entra llamando a `SuscripcionService::confirmar()`. Nada del control de
+  acceso cambia.
+- **Datos de cobro reales.** `PlanSeeder` siembra un Pago Móvil de ejemplo (`V-00000000`). Hay que
+  reemplazarlo antes de cobrarle a nadie.
 - **Entrar con Google.** El botón está en la interfaz porque el público no recuerda contraseñas,
   pero `laravel/socialite` **todavía no soporta Laravel 13**: la ruta existe y avisa en vez de
   romperse (mismo criterio que IGA con el router y la clave de IA). Revisar cuando publiquen
@@ -217,7 +296,7 @@ Hecho:
 
 ---
 
-## 9. Comandos
+## 10. Comandos
 
 ```bash
 php artisan migrate:fresh --seed
@@ -226,5 +305,16 @@ php artisan test
 npm run build
 ```
 
+```bash
+php artisan tasa:sync               # traer la tasa del día a mano
+php artisan pagos pendientes        # pagos por cotejar
+php artisan pagos confirmar 12      # activar la suscripción
+```
+
 **Tests**: contra Postgres (`norte_test`), no sqlite en memoria — las diferencias de dialecto tienen
 que salir en las pruebas. Crear la base una vez con `createdb -U postgres -p 5433 norte_test`.
+
+**Ojo con el entorno**: PHP en esta máquina no traía bundle de certificados CA, así que toda
+llamada HTTPS saliente fallaba con «SSL certificate problem» — incluida la de la tasa, que es el
+latido del producto. Se descargó `cacert.pem` y se apuntaron `curl.cainfo` y `openssl.cafile` en el
+`php.ini` (hay respaldo `.bak` al lado). En un servidor nuevo hay que repetirlo.

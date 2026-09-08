@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\ExchangeRate;
 use App\Services\PrecioService;
+use App\Services\SuscripcionService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -46,6 +47,16 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'tasa' => $this->tasa($negocio),
+
+            /*
+             * El estado de la suscripción va en todas las páginas: el aviso de "te quedan
+             * 3 días" tiene que aparecer donde el usuario está trabajando, no solo si entra
+             * a la pantalla de suscripción — que es justo la que no visita quien está por
+             * vencerse.
+             */
+            'suscripcion' => $negocio
+                ? app(SuscripcionService::class)->resumen($negocio)
+                : null,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

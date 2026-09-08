@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\PanelController;
+use App\Http\Controllers\SuscripcionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,5 +33,18 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/salir', [AuthController::class, 'salir'])->name('logout');
 
-    Route::get('/panel', [PanelController::class, 'index'])->name('panel');
+    /*
+     * Suscripción. NO lleva `suscrito`: es justo la pantalla a la que hay que poder llegar
+     * cuando la suscripción venció — protegerla dejaría al cliente sin forma de pagar.
+     */
+    Route::controller(SuscripcionController::class)->prefix('suscripcion')->group(function () {
+        Route::get('/', 'index')->name('suscripcion');
+        Route::get('/cobro/{planId}', 'cobro')->name('suscripcion.cobro');
+        Route::post('/reportar', 'reportar')->name('suscripcion.reportar');
+    });
+
+    // El valor vivo: precio recalculado con la tasa de hoy. Esto es lo que se paga.
+    Route::middleware('suscrito')->group(function () {
+        Route::get('/panel', [PanelController::class, 'index'])->name('panel');
+    });
 });
