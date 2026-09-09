@@ -228,7 +228,45 @@ por el Pago Móvil real.
 
 ---
 
-## 8. Qué se trajo de `iga-app` y qué no
+## 8. El catálogo
+
+### La vista previa en vivo es la funcionalidad, no un adorno
+
+El precio aparece **mientras el usuario teclea** el costo y el margen. No está detrás de un botón
+«calcular» ni espera al servidor: ese instante —ver el número formarse solo— es cuando se entiende
+para qué sirve Norte. Con la señal que tiene este público, una ida al servidor por pulsación haría
+que la cifra llegara tarde y el efecto se perdiera.
+
+Eso obliga a tener la fórmula **dos veces**: `PrecioService` (PHP, autoridad) y `Utils/Precio.js`
+(espejo, solo para la previa). Es el mismo trato que IGA hace con `calcularPrecio()` en
+`Formatter.js`, y por eso ambos archivos llevan el aviso: **si se toca una, hay que tocar la otra**.
+Lo que se guarda y lo que se exporta sale siempre del servidor.
+
+### El anclaje se explica, no se pide
+
+Cuando el costo se declara en bolívares aparece «¿A qué tasa lo compraste?» **prellenado con la
+tasa de hoy** —el caso común es «esto lo compré ahorita»— y debajo, la razón en el idioma del
+usuario: *«tu costo queda anclado en $1,47 y tu precio sube solo cuando suba el dólar; sin esto
+irías perdiendo sin darte cuenta»*. Sin esa frase el campo parece un trámite y la gente pone
+cualquier cosa; con ella, es lo que le vendimos.
+
+### Ver está abierto, editar no
+
+Listar el catálogo **no** exige suscripción vigente: esos costos y márgenes los cargó el usuario y
+son suyos. Lo que se paga es el precio calculado, y `ProductoController::list()` simplemente **no lo
+incluye en la respuesta** cuando la suscripción venció — calcularlo y esconderlo con CSS no sería
+esconderlo. Modificar el catálogo sí va detrás de `suscrito`.
+
+### `step="any"` en todos los campos numéricos
+
+No es descuido. Con un `step` fijo el navegador rechaza los valores que no caen en la rejilla, **en
+silencio y con un mensaje propio en inglés**. Pasó de verdad: el formulario prellenaba la tasa del
+día (814,6908, cuatro decimales como la publica el BCV) en un campo con `step="0.01"`, y guardar no
+hacía nada. Quien valida es el servidor; el navegador solo elige el teclado (`inputMode`).
+
+---
+
+## 9. Qué se trajo de `iga-app` y qué no
 
 **Sí se trajo** (y por qué vale):
 
@@ -246,7 +284,7 @@ portarlos **con `tenant_id`**, no copiarlos tal cual.
 
 ---
 
-## 9. Estado actual
+## 10. Estado actual
 
 Hecho:
 
@@ -254,22 +292,22 @@ Hecho:
 - Multi-inquilino: `tenants`, `users`, scope global, alta de negocio+usuario en una transacción.
 - `exchange_rates` compartida + `TasaService`.
 - `products` + `price_snapshots` con el modelo de costo anclado.
-- `PrecioService` y `SuscripcionService`, con 24 tests verdes.
+- `PrecioService` y `SuscripcionService`, con 44 tests verdes.
 - Marca Norte: isotipo, paleta, tema oscuro por defecto.
 - Login y registro con el panel de marca; panel con la tasa del día y la lista calculada.
 - **Tasa entrando de verdad**: `php artisan tasa:sync` + programador. Verificado contra el
   proveedor real.
 - **Cobro**: planes, suscripción con máquina de estados, reporte de Pago Móvil con el monto
   convertido a la tasa del día, y confirmación por consola (`php artisan pagos`).
+- **Catálogo**: alta, edición y borrado de productos, con **vista previa del precio en vivo**
+  mientras se teclea — es el momento en que el usuario entiende qué hace la herramienta.
 
 ### Lo que sigue, en orden
 
-1. **Alta y edición de productos** — hoy el panel muestra el estado vacío. Es lo único que falta
-   para que el «aha» ocurra: cargar un producto y ver su precio al día. Es lo siguiente.
-2. **Exportar a WhatsApp** — texto plano agrupado por categoría. Es la mitad de la promesa B.
-3. **Foto diaria en `price_snapshots`** + la gráfica del historial: es lo que hace que el usuario
+1. **Exportar a WhatsApp** — texto plano agrupado por categoría. Es la mitad de la promesa B.
+2. **Foto diaria en `price_snapshots`** + la gráfica del historial: es lo que hace que el usuario
    *crea* que la herramienta trabaja, en vez de tener que creernos.
-4. **Aviso de vencimiento** por correo o WhatsApp unos días antes: hoy el usuario solo se entera si
+3. **Aviso de vencimiento** por correo o WhatsApp unos días antes: hoy el usuario solo se entera si
    entra a la app.
 
 ### Pendientes que necesitan decisión del negocio
@@ -296,7 +334,7 @@ Hecho:
 
 ---
 
-## 10. Comandos
+## 11. Comandos
 
 ```bash
 php artisan migrate:fresh --seed

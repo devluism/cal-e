@@ -44,8 +44,8 @@ class PlanSeeder extends Seeder
         PaymentAccount::updateOrCreate(['label' => 'Pago Móvil'], [
             'method' => 'pago_movil',
             'bank' => '0102 — Banco de Venezuela',
-            'id_number' => 'V-00000000',
-            'phone' => '0412-0000000',
+            'id_number' => 'V-25935410',
+            'phone' => '0424-9064305',
             'holder' => 'Norte',
             'active' => true,
             'position' => 0,

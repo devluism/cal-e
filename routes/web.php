@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\PanelController;
+use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\SuscripcionController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,8 +44,27 @@ Route::middleware('auth')->group(function () {
         Route::post('/reportar', 'reportar')->name('suscripcion.reportar');
     });
 
+    /*
+     * Catálogo. Ver y listar NO exige suscripción vigente: esos costos y márgenes los cargó
+     * el usuario y son suyos. Lo que se paga es el precio calculado, y `list()` lo omite
+     * cuando la suscripción venció.
+     */
+    Route::controller(ProductoController::class)->prefix('productos')->group(function () {
+        Route::get('/', 'index')->name('productos.index');
+        Route::get('/list', 'list')->name('productos.list');
+        Route::get('/tasa', 'tasaDelDia')->name('productos.tasa');
+    });
+
     // El valor vivo: precio recalculado con la tasa de hoy. Esto es lo que se paga.
     Route::middleware('suscrito')->group(function () {
         Route::get('/panel', [PanelController::class, 'index'])->name('panel');
+
+        // Modificar el catálogo sí exige suscripción: es parte de la herramienta, no del
+        // dato que el usuario ya tenía.
+        Route::controller(ProductoController::class)->prefix('productos')->group(function () {
+            Route::post('/', 'store')->name('productos.store');
+            Route::put('/{id}', 'update')->name('productos.update');
+            Route::delete('/{id}', 'destroy')->name('productos.destroy');
+        });
     });
 });
