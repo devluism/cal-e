@@ -212,6 +212,28 @@ class SuscripcionService
         return $pago->fresh();
     }
 
+    /**
+     * Si toca avisarle al negocio de su vencimiento ahora mismo, y de qué.
+     *
+     * Devuelve el hito ('3', '1' días antes, o 'vencida' al entrar en gracia o suspenderse) o
+     * `null` si no toca. Comparar contra `reminder_sent_for` es lo que evita mandar el mismo
+     * correo todos los días mientras la suscripción se queda en el mismo hito — y como el
+     * valor guardado es el hito y no un booleano, un ciclo de pago nuevo cambia los días
+     * restantes, el hito deja de coincidir con el guardado, y el aviso se reactiva solo sin
+     * que nadie tenga que limpiar el campo al cobrar.
+     */
+    public function hitoDeAviso(Subscription $suscripcion): ?string
+    {
+        $hito = match (true) {
+            in_array($suscripcion->status, [Subscription::GRACIA, Subscription::SUSPENDIDA], true) => 'vencida',
+            $suscripcion->dias_restantes === 1 => '1',
+            $suscripcion->dias_restantes === 3 => '3',
+            default => null,
+        };
+
+        return $hito !== null && $suscripcion->reminder_sent_for !== $hito ? $hito : null;
+    }
+
     /** Lo que necesita la pantalla de suscripción. */
     public function resumen(Tenant $negocio): array
     {

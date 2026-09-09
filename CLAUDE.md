@@ -226,6 +226,28 @@ producto en sí mismo. Cuando haya volumen, la pantalla llama al mismo servicio.
 **Antes de cobrarle a nadie**: reemplazar los datos de ejemplo de `PaymentAccount` en `PlanSeeder`
 por el Pago Móvil real.
 
+### El aviso de vencimiento
+
+Sin esto, un negocio solo se entera de que perdió la parte viva del producto si vuelve a entrar a
+la app — y para el momento en que lo nota, pudo haber mandado una lista con precios ya congelados
+a un cliente. `php artisan suscripcion:avisar` (programado a las 9:00) recorre todas las
+suscripciones y manda un correo (`App\Mail\SuscripcionPorVencer`) cuando corresponde.
+
+- **El aviso se identifica por hito, no por fecha.** `SuscripcionService::hitoDeAviso()` devuelve
+  `'3'`, `'1'` (días antes de vencer) o `'vencida'` (al entrar en gracia o suspenderse), comparado
+  contra `subscriptions.reminder_sent_for`. Es lo que evita mandar el mismo correo todos los días
+  mientras la suscripción se queda en el mismo hito — un aviso diario diciendo lo mismo se aprende
+  a ignorar en una semana.
+- **Se resetea solo en cada ciclo de pago**, sin que nadie tenga que limpiar el campo: al confirmar
+  un pago los días restantes vuelven a subir, el hito de hoy deja de coincidir con el guardado
+  (`'vencida'` ≠ `'3'`), y el aviso se reactiva para el ciclo nuevo.
+- **Sin usuarios activos en el negocio, no se marca como avisado.** Si mañana el negocio reactiva a
+  alguien, tiene que poder recibir el aviso que le tocaba, no uno que quedó silenciosamente
+  descartado.
+- **Solo correo por ahora.** WhatsApp automatizado necesita una API de pago (Twilio, la API oficial
+  de Meta) y una cuenta de negocio verificada — es un paso de negocio, igual que el C2P bancario de
+  arriba, no algo que se resuelva con más código.
+
 ---
 
 ## 8. El catálogo
@@ -383,7 +405,7 @@ Hecho:
 - Multi-inquilino: `tenants`, `users`, scope global, alta de negocio+usuario en una transacción.
 - `exchange_rates` compartida + `TasaService`.
 - `products` + `price_snapshots` con el modelo de costo anclado.
-- `PrecioService` y `SuscripcionService`, con 53 tests verdes.
+- `PrecioService` y `SuscripcionService`, con 61 tests verdes.
 - Marca Norte: isotipo, paleta, tema oscuro por defecto.
 - Login y registro con el panel de marca; panel con la tasa del día y la lista calculada.
 - **Tasa entrando de verdad**: `php artisan tasa:sync` + programador. Verificado contra el
@@ -396,11 +418,13 @@ Hecho:
   hay tasa cargada, para no mandar precios en cero.
 - **Historial de precios**: foto diaria (`precios:snapshot`, programado a las 20:00) y gráfico
   de línea por producto, detrás de suscripción. Ver la sección 10.
+- **Aviso de vencimiento**: correo automático 3 y 1 día antes de vencer, y al entrar en gracia o
+  suspenderse (`suscripcion:avisar`, programado a las 9:00). Ver la sección 7.
 
 ### Lo que sigue, en orden
 
-1. **Aviso de vencimiento** por correo o WhatsApp unos días antes: hoy el usuario solo se entera si
-   entra a la app.
+Lo que quedaba en la lista original ya está hecho. Lo próximo se decide con el negocio — ver abajo
+— o con lo que aparezca al usar la herramienta con clientes reales.
 
 ### Pendientes que necesitan decisión del negocio
 
@@ -416,6 +440,10 @@ Hecho:
   acceso cambia.
 - **Datos de cobro reales.** `PlanSeeder` siembra un Pago Móvil de ejemplo (`V-00000000`). Hay que
   reemplazarlo antes de cobrarle a nadie.
+- **Aviso de vencimiento por WhatsApp**, además del correo. Hoy `MAIL_MAILER=log` en desarrollo —
+  hay que configurar un proveedor real (Postmark, SES, Resend) antes de que el correo le llegue a
+  alguien—, y WhatsApp automatizado necesita además una cuenta de negocio verificada y una API de
+  pago (Twilio, la API de Meta): dos pasos de negocio antes de que valga la pena escribir el código.
 - **Entrar con Google.** El botón está en la interfaz porque el público no recuerda contraseñas,
   pero `laravel/socialite` **todavía no soporta Laravel 13**: la ruta existe y avisa en vez de
   romperse (mismo criterio que IGA con el router y la clave de IA). Revisar cuando publiquen
@@ -440,6 +468,7 @@ php artisan tasa:sync               # traer la tasa del día a mano
 php artisan pagos pendientes        # pagos por cotejar
 php artisan pagos confirmar 12      # activar la suscripción
 php artisan precios:snapshot        # foto de hoy del historial de precios (normalmente programada)
+php artisan suscripcion:avisar      # aviso de vencimiento por correo (normalmente programado)
 ```
 
 **Tests**: contra Postgres (`norte_test`), no sqlite en memoria — las diferencias de dialecto tienen

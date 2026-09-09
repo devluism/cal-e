@@ -24,3 +24,10 @@ Schedule::command('tasa:sync')->dailyAt('07:00')->withoutOverlapping();
  * snapshot de hoy usa la tasa más reciente que el BCV publicó, no la de la mañana.
  */
 Schedule::command('precios:snapshot')->dailyAt('20:00')->withoutOverlapping();
+
+/*
+ * El aviso de vencimiento. A media mañana y no de madrugada: es un correo para que alguien lo
+ * lea, no un proceso interno — mandarlo a las 3 a.m. no le gana nada y sí puede aterrizar
+ * enterrado quince notificaciones más abajo para cuando el dueño revise el teléfono.
+ */
+Schedule::command('suscripcion:avisar')->dailyAt('09:00')->withoutOverlapping();

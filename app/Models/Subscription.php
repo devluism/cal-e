@@ -31,7 +31,7 @@ class Subscription extends Model
     public const DIAS_PRUEBA = 14;
 
     protected $fillable = [
-        'tenant_id', 'plan_id', 'status', 'trial_ends_at', 'ends_at', 'cancelled_at',
+        'tenant_id', 'plan_id', 'status', 'reminder_sent_for', 'trial_ends_at', 'ends_at', 'cancelled_at',
     ];
 
     protected function casts(): array
