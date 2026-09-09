@@ -266,7 +266,45 @@ hacía nada. Quien valida es el servidor; el navegador solo elige el teclado (`i
 
 ---
 
-## 9. Qué se trajo de `iga-app` y qué no
+## 9. Exportar a WhatsApp
+
+Es la otra mitad de la promesa B del CLAUDE.md: «copio mi lista y la mando en 10 segundos».
+
+### Formato y acción, separados
+
+`Utils/ExportarWhatsApp.js` tiene tres funciones que no se mezclan:
+
+- `generarTextoWhatsApp()` — arma el texto. Pura: mismo catálogo adentro, mismo texto afuera.
+- `copiarAlPortapapeles()` — la acción de copiar, con respaldo a `execCommand` si
+  `navigator.clipboard` no existe (contexto no seguro, WebView viejo — nada raro en este
+  público).
+- `abrirWhatsApp()` — abre `wa.me/?text=...` **sin número de destino**. Quien manda la lista
+  es el negocio; a quién se la manda —un cliente puntual, un grupo, su propio estado— lo
+  elige él en la app, no la herramienta.
+
+Separarlas es lo que permite ofrecer las dos vías en el panel («Copiar» y «WhatsApp») sin
+duplicar el formato, y lo que haría trivial agregar un tercer destino (Instagram, un correo)
+el día que haga falta.
+
+### No se exporta con la tasa en cero
+
+Si no hay tasa cargada, los dos botones se cortan antes de generar el texto y avisan en vez
+de dejar salir una lista con puros `0,00 Bs`. Es la misma regla de `PrecioService::tasaDe()`
+aplicada un nivel más arriba: **mostrar la última tasa buena diciendo su edad es aceptable;
+mandarle a un cliente una lista con precios inventados o en cero no lo es**, y para cuando el
+negocio se diera cuenta ya estaría circulando.
+
+### Un aviso que quedaba roto en la primera instalación
+
+Al construir esto se encontró que `tasa.actualizada` salía `null` cuando la tabla
+`exchange_rates` estaba vacía —cualquier instalación nueva, antes del primer
+`tasa:sync`— y el frontend armaba el aviso como *«Esta tasa se actualizó .»*, con un hueco.
+Se agregó `tasa.nunca_cargada` (compartido en `HandleInertiaRequests`) para que ese caso
+tenga su propio mensaje: *«Todavía no hay tasa cargada»*, distinto de *«se actualizó ayer»*.
+
+---
+
+## 10. Qué se trajo de `iga-app` y qué no
 
 **Sí se trajo** (y por qué vale):
 
@@ -284,7 +322,7 @@ portarlos **con `tenant_id`**, no copiarlos tal cual.
 
 ---
 
-## 10. Estado actual
+## 11. Estado actual
 
 Hecho:
 
@@ -292,7 +330,7 @@ Hecho:
 - Multi-inquilino: `tenants`, `users`, scope global, alta de negocio+usuario en una transacción.
 - `exchange_rates` compartida + `TasaService`.
 - `products` + `price_snapshots` con el modelo de costo anclado.
-- `PrecioService` y `SuscripcionService`, con 44 tests verdes.
+- `PrecioService` y `SuscripcionService`, con 47 tests verdes.
 - Marca Norte: isotipo, paleta, tema oscuro por defecto.
 - Login y registro con el panel de marca; panel con la tasa del día y la lista calculada.
 - **Tasa entrando de verdad**: `php artisan tasa:sync` + programador. Verificado contra el
@@ -301,13 +339,14 @@ Hecho:
   convertido a la tasa del día, y confirmación por consola (`php artisan pagos`).
 - **Catálogo**: alta, edición y borrado de productos, con **vista previa del precio en vivo**
   mientras se teclea — es el momento en que el usuario entiende qué hace la herramienta.
+- **Exportar a WhatsApp**: copiar o abrir WhatsApp con la lista ya formateada. Se corta si no
+  hay tasa cargada, para no mandar precios en cero.
 
 ### Lo que sigue, en orden
 
-1. **Exportar a WhatsApp** — texto plano agrupado por categoría. Es la mitad de la promesa B.
-2. **Foto diaria en `price_snapshots`** + la gráfica del historial: es lo que hace que el usuario
+1. **Foto diaria en `price_snapshots`** + la gráfica del historial: es lo que hace que el usuario
    *crea* que la herramienta trabaja, en vez de tener que creernos.
-3. **Aviso de vencimiento** por correo o WhatsApp unos días antes: hoy el usuario solo se entera si
+2. **Aviso de vencimiento** por correo o WhatsApp unos días antes: hoy el usuario solo se entera si
    entra a la app.
 
 ### Pendientes que necesitan decisión del negocio
@@ -334,7 +373,7 @@ Hecho:
 
 ---
 
-## 11. Comandos
+## 12. Comandos
 
 ```bash
 php artisan migrate:fresh --seed

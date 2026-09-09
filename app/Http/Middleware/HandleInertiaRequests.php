@@ -85,6 +85,11 @@ class HandleInertiaRequests extends Middleware
             'fuente' => $negocio->rate_source,
             'actualizada' => $vigente?->created_at?->diffForHumans(),
             'es_de_hoy' => (bool) $vigente?->created_at?->isToday(),
+
+            // Distinto de "es de ayer": una instalación recién migrada, antes de que corra
+            // el primer `tasa:sync`, no tiene NINGUNA fila. Sin este campo el frontend arma
+            // el aviso de "se actualizó hace [nada]" con un hueco en la frase.
+            'nunca_cargada' => is_null($vigente),
         ];
     }
 }

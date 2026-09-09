@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
-import { Plus, TriangleAlert } from 'lucide-react';
+import { Check, Copy, MessageCircle, Plus, TriangleAlert } from 'lucide-react';
+import { toast } from 'sonner';
 import AppLayout from '@/Layouts/AppLayout';
 import { IsotipoNorte } from '@/Components/Marca/LogoNorte';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { abrirWhatsApp, copiarAlPortapapeles, generarTextoWhatsApp } from '@/Utils/ExportarWhatsApp';
 import { formatearNumero, formatearUsd } from '@/Utils/Formatter';
 
 /**
@@ -15,8 +18,9 @@ import { formatearNumero, formatearUsd } from '@/Utils/Formatter';
  * número es una razón para no volver.
  */
 export default function Panel() {
-    const { tasa, catalogo } = usePage().props;
+    const { auth, tasa, catalogo } = usePage().props;
     const productos = catalogo?.productos ?? [];
+    const [copiado, setCopiado] = useState(false);
 
     // Agrupado por categoría: es como se lee y como se va a exportar a WhatsApp.
     const porCategoria = productos.reduce((grupos, p) => {
@@ -25,6 +29,43 @@ export default function Panel() {
 
         return grupos;
     }, {});
+
+    /**
+     * Sin tasa cargada, todos los precios en bolívares saldrían en 0,00 — una lista así
+     * mandada a un cliente sería mentirle con un número, lo mismo que el resto del sistema
+     * evita en todas partes (ver `PrecioService::tasaDe`). Se corta antes de generar el
+     * texto en vez de dejar que salga con ceros y que el usuario lo note tarde.
+     */
+    const puedeExportar = () => {
+        if (Number(tasa?.valor) > 0) return true;
+
+        toast.error('Todavía no hay tasa cargada: espera a que se sincronice antes de mandar tu lista.');
+
+        return false;
+    };
+
+    const copiar = async () => {
+        if (!puedeExportar()) return;
+
+        const texto = generarTextoWhatsApp({ negocio: auth.negocio, productos });
+        const ok = await copiarAlPortapapeles(texto);
+
+        if (!ok) {
+            toast.error('No se pudo copiar. Mantén el dedo sobre el texto para copiarlo a mano.');
+
+            return;
+        }
+
+        toast.success('Lista copiada. Pégala donde quieras mandarla.');
+        setCopiado(true);
+        setTimeout(() => setCopiado(false), 2000);
+    };
+
+    const enviarPorWhatsApp = () => {
+        if (!puedeExportar()) return;
+
+        abrirWhatsApp(generarTextoWhatsApp({ negocio: auth.negocio, productos }));
+    };
 
     return (
         <AppLayout title="Mis precios de hoy">
@@ -46,12 +87,21 @@ export default function Panel() {
                         </span>
                     </p>
 
-                    {tasa && !tasa.es_de_hoy && (
+                    {tasa && tasa.nunca_cargada ? (
                         <p className="mt-2 flex items-start gap-2 text-xs text-warning">
                             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-                            Esta tasa se actualizó {tasa.actualizada}. Si el BCV ya publicó la de
-                            hoy, revísala antes de mandar tu lista.
+                            Todavía no hay tasa cargada. Tus precios en bolívares van a salir en
+                            cero hasta que se sincronice.
                         </p>
+                    ) : (
+                        tasa &&
+                        !tasa.es_de_hoy && (
+                            <p className="mt-2 flex items-start gap-2 text-xs text-warning">
+                                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                                Esta tasa se actualizó {tasa.actualizada}. Si el BCV ya publicó la
+                                de hoy, revísala antes de mandar tu lista.
+                            </p>
+                        )
                     )}
                 </CardContent>
             </Card>
@@ -88,9 +138,20 @@ export default function Panel() {
                             </CardDescription>
                         </div>
 
-                        <Button variant="outline" size="sm" disabled>
-                            Copiar para WhatsApp
-                        </Button>
+                        {/* Dos vías y no una: "Copiar" sirve para pegar en un grupo, en el
+                            estado, en Instagram — cualquier destino. "WhatsApp" abre la app
+                            directo con el texto listo y deja que el usuario elija a quién
+                            se lo manda, sin que la herramienta le imponga un contacto. */}
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={copiar}>
+                                {copiado ? <Check className="text-success" /> : <Copy />}
+                                Copiar
+                            </Button>
+
+                            <Button size="sm" onClick={enviarPorWhatsApp}>
+                                <MessageCircle /> WhatsApp
+                            </Button>
+                        </div>
                     </CardHeader>
 
                     <CardContent className="flex flex-col gap-4">
