@@ -60,11 +60,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/panel', [PanelController::class, 'index'])->name('panel');
 
         // Modificar el catálogo sí exige suscripción: es parte de la herramienta, no del
-        // dato que el usuario ya tenía.
+        // dato que el usuario ya tenía. El historial también: es valor vivo, igual que el
+        // precio calculado (ver `ProductoController::historial`).
         Route::controller(ProductoController::class)->prefix('productos')->group(function () {
             Route::post('/', 'store')->name('productos.store');
             Route::put('/{id}', 'update')->name('productos.update');
             Route::delete('/{id}', 'destroy')->name('productos.destroy');
+            Route::get('/{id}/historial', 'historial')->name('productos.historial');
         });
     });
 });

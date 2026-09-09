@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ExchangeRate;
 use App\Models\Product;
+use App\Services\HistorialService;
 use App\Services\PrecioService;
 use App\Services\SuscripcionService;
 use Illuminate\Support\Facades\Response;
@@ -27,6 +28,7 @@ class ProductoController extends Controller
     public function __construct(
         private PrecioService $precios,
         private SuscripcionService $suscripciones,
+        private HistorialService $historial,
     ) {}
 
     public function index()
@@ -143,6 +145,28 @@ class ProductoController extends Controller
     {
         return Response::json([
             'tasa' => round((float) (ExchangeRate::vigente()?->price ?? 0), 4),
+        ]);
+    }
+
+    /**
+     * El historial de precios de un producto, para la gráfica.
+     *
+     * Protegido por `suscrito` como el resto del valor vivo: la evolución del precio es la
+     * prueba de que la herramienta trabaja sola, y eso es justo lo que se paga (ver
+     * `HistorialService`).
+     */
+    public function historial(string $id)
+    {
+        $producto = Product::findOrFail($id);
+
+        return Response::json([
+            'producto' => ['id' => $producto->id, 'name' => $producto->name],
+            'historial' => $this->historial->historialDe($producto)->map(fn ($snapshot) => [
+                'fecha' => $snapshot->date->format('Y-m-d'),
+                'precio_usd' => (float) $snapshot->price_usd,
+                'precio_bs' => (float) $snapshot->price_bs,
+                'tasa' => (float) $snapshot->rate,
+            ]),
         ]);
     }
 }

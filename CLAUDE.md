@@ -304,7 +304,60 @@ tenga su propio mensaje: *«Todavía no hay tasa cargada»*, distinto de *«se a
 
 ---
 
-## 10. Qué se trajo de `iga-app` y qué no
+## 10. El historial de precios
+
+Es la prueba de la promesa central del producto. «Tus precios se ajustan solos» es una frase en
+la pantalla de entrada hasta que el usuario ve la línea de un producto subir sola, día tras día,
+sin haber tocado nada — eso es lo que convierte a alguien que está probando la herramienta en
+alguien que le cree.
+
+### Es una FOTO, no un cálculo derivado
+
+`HistorialService::tomarFoto()` guarda un renglón por producto y por día en `price_snapshots`,
+con el precio ya calculado (vía `PrecioService`, la misma fórmula que el panel) y la tasa que se
+usó ese día. **No se recalcula al leer.** `PrecioService::calcular()` con la tasa de hoy dice
+cuánto vale un producto *ahora*; el historial dice cuánto valía *entonces*, y esos dos números
+tienen que poder ser distintos —la tasa de ayer no vive en ningún otro lado una vez que cambió—
+o el historial no significaría nada.
+
+- **Sin tasa cargada no se fotografía nada.** Un snapshot en 0,00 Bs mentiría en el historial
+  igual que mostrarlo en pantalla, y sería indistinguible después de un «de verdad no valía nada
+  ese día». Misma regla que en la exportación a WhatsApp, aplicada un nivel más abajo.
+- **`updateOrCreate` sobre `(product_id, date)`** (el índice único ya existía desde que se creó
+  la tabla) es lo que hace que correr el comando dos veces el mismo día actualice la foto en vez
+  de duplicarla o reventar. Importa porque el comando programado puede reintentarse.
+- **`tenant_id` se pone a mano**, no por el scope global: `tomarFotoDeTodos()` corre desde un
+  comando de consola, sin usuario en sesión, así que no hay de dónde más sacar el inquilino.
+
+### El comando y su horario
+
+`php artisan precios:snapshot` recorre todos los negocios (`Tenant::each()`, en bloques) y llama
+`tomarFoto()` en cada uno. Programado a las **20:00**, después de las dos corridas de
+`tasa:sync` del día: así la foto de hoy usa la tasa más reciente que el BCV publicó, no la de la
+mañana. Un negocio con tasa propia (`usa_tasa_propia`) igual queda fotografiado con lo que tenga
+cargado a esa hora.
+
+### El endpoint y el gráfico
+
+`GET /productos/{id}/historial` vive dentro del grupo `suscrito`, igual que el panel: la
+evolución del precio es valor vivo, y es exactamente lo que se paga. El catálogo en sí (nombre,
+costo, margen) sigue abierto sin suscripción — ver la sección 8 —, pero el historial de ESE
+precio calculado no.
+
+`Components/Productos/HistorialDialog.jsx` pide el historial por fetch **al abrir el diálogo**,
+no junto con el resto del catálogo: la mayoría de las veces que se mira la lista de productos
+nadie abre el historial de ninguno, y pedir treinta días de cada producto por adelantado sería
+trabajo que casi nunca se usa. Usa `LineChart` de `recharts` vía el `ChartContainer` de shadcn
+—el mismo que trae el fix de responsive de IGA (`min-w-0 overflow-x-auto`, ver sección 2)—, así
+que no puede romper el layout de la tarjeta en un teléfono.
+
+**Con menos de dos puntos no se dibuja un gráfico roto**: se muestra el mensaje «Todavía no hay
+suficiente historial. Vuelve mañana», porque una línea con un solo punto no dice nada y un eje
+vacío parece un error antes que una app nueva.
+
+---
+
+## 11. Qué se trajo de `iga-app` y qué no
 
 **Sí se trajo** (y por qué vale):
 
@@ -322,7 +375,7 @@ portarlos **con `tenant_id`**, no copiarlos tal cual.
 
 ---
 
-## 11. Estado actual
+## 12. Estado actual
 
 Hecho:
 
@@ -330,7 +383,7 @@ Hecho:
 - Multi-inquilino: `tenants`, `users`, scope global, alta de negocio+usuario en una transacción.
 - `exchange_rates` compartida + `TasaService`.
 - `products` + `price_snapshots` con el modelo de costo anclado.
-- `PrecioService` y `SuscripcionService`, con 47 tests verdes.
+- `PrecioService` y `SuscripcionService`, con 53 tests verdes.
 - Marca Norte: isotipo, paleta, tema oscuro por defecto.
 - Login y registro con el panel de marca; panel con la tasa del día y la lista calculada.
 - **Tasa entrando de verdad**: `php artisan tasa:sync` + programador. Verificado contra el
@@ -341,12 +394,12 @@ Hecho:
   mientras se teclea — es el momento en que el usuario entiende qué hace la herramienta.
 - **Exportar a WhatsApp**: copiar o abrir WhatsApp con la lista ya formateada. Se corta si no
   hay tasa cargada, para no mandar precios en cero.
+- **Historial de precios**: foto diaria (`precios:snapshot`, programado a las 20:00) y gráfico
+  de línea por producto, detrás de suscripción. Ver la sección 10.
 
 ### Lo que sigue, en orden
 
-1. **Foto diaria en `price_snapshots`** + la gráfica del historial: es lo que hace que el usuario
-   *crea* que la herramienta trabaja, en vez de tener que creernos.
-2. **Aviso de vencimiento** por correo o WhatsApp unos días antes: hoy el usuario solo se entera si
+1. **Aviso de vencimiento** por correo o WhatsApp unos días antes: hoy el usuario solo se entera si
    entra a la app.
 
 ### Pendientes que necesitan decisión del negocio
@@ -373,7 +426,7 @@ Hecho:
 
 ---
 
-## 12. Comandos
+## 13. Comandos
 
 ```bash
 php artisan migrate:fresh --seed
@@ -386,6 +439,7 @@ npm run build
 php artisan tasa:sync               # traer la tasa del día a mano
 php artisan pagos pendientes        # pagos por cotejar
 php artisan pagos confirmar 12      # activar la suscripción
+php artisan precios:snapshot        # foto de hoy del historial de precios (normalmente programada)
 ```
 
 **Tests**: contra Postgres (`norte_test`), no sqlite en memoria — las diferencias de dialecto tienen

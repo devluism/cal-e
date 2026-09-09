@@ -18,3 +18,9 @@ Schedule::command('tasa:sync')->weekdays()->at('18:00')->withoutOverlapping();
  * entonces la tasa del día hábil anterior ya tiene que estar cargada.
  */
 Schedule::command('tasa:sync')->dailyAt('07:00')->withoutOverlapping();
+
+/*
+ * La foto del historial de precios, después de la última sincronización del día: así el
+ * snapshot de hoy usa la tasa más reciente que el BCV publicó, no la de la mañana.
+ */
+Schedule::command('precios:snapshot')->dailyAt('20:00')->withoutOverlapping();

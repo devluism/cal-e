@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { Lock, Package, Pencil, Plus, Trash2 } from 'lucide-react';
+import { LineChart, Lock, Package, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/Layouts/AppLayout';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import ProductoDialog from '@/Components/Productos/ProductoDialog';
+import HistorialDialog from '@/Components/Productos/HistorialDialog';
 import { IsotipoNorte } from '@/Components/Marca/LogoNorte';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
@@ -20,6 +21,7 @@ export default function Productos() {
     const [cargando, setCargando] = useState(true);
     const [abierto, setAbierto] = useState(false);
     const [editando, setEditando] = useState(null);
+    const [verHistorial, setVerHistorial] = useState(null);
 
     const cargar = async () => {
         try {
@@ -156,6 +158,16 @@ export default function Productos() {
                                                             variant="ghost"
                                                             size="icon"
                                                             className="size-8"
+                                                            aria-label={`Ver historial de ${p.name}`}
+                                                            onClick={() => setVerHistorial(p)}
+                                                        >
+                                                            <LineChart className="size-3.5" />
+                                                        </Button>
+
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-8"
                                                             aria-label={`Editar ${p.name}`}
                                                             onClick={() => abrirEdicion(p)}
                                                         >
@@ -226,6 +238,12 @@ export default function Productos() {
                 producto={editando}
                 tasa={catalogo?.tasa ?? 0}
                 categorias={catalogo?.categorias ?? []}
+            />
+
+            <HistorialDialog
+                abierto={Boolean(verHistorial)}
+                onOpenChange={(open) => !open && setVerHistorial(null)}
+                producto={verHistorial}
             />
         </AppLayout>
     );
